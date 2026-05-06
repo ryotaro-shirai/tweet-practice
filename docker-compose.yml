@@ -1,0 +1,63 @@
+version: "3"
+
+services:
+  tweet-practice-psql:
+    container_name: tweet-practice-psql
+    image: postgres:17
+    environment:
+      TZ: Asia/Tokyo
+    volumes:
+      - psql_data:/var/lib/postgresql/data
+    ports:
+      - 25432:5432
+    env_file:
+      - .env
+    networks:
+      - app_net
+
+  tweet-practice-web:
+    container_name: tweet-practice-web
+    build: ./web/
+    image: tweet-practice-web
+    command: bundle exec rails server -b 0.0.0.0
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./web:/app:cached
+      - ./web/tmp/capybara:/app/tmp/capybara
+      - bundle_data:/usr/local/bundle:cached
+      - /app/vendor
+      - /app/tmp
+      - /app/log
+      - /app/.git
+    env_file:
+      - .env
+    depends_on:
+      - tweet-practice-psql
+    ports:
+      - 3000:3000 # ポートフォワード
+    networks:
+      - app_net
+
+  tweet-practice-chrome:
+    container_name: tweet-practice-chrome
+    image: seleniarm/standalone-chromium
+    ports:
+      - "4444:4444"
+    # ref: https://github.com/seleniumhq-community/docker-seleniarm#--shm-size2g
+    shm_size: 2gb
+    networks:
+      - app_net
+
+networks:
+  app_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.1.0.0/24
+
+volumes:
+  bundle_data:
+  psql_data:
+  node_modules:
